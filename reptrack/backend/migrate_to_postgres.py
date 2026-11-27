@@ -19,10 +19,6 @@ def parse_ts(val: str | None) -> datetime:
 
 
 def migrate(sqlite_path: Path, force: bool = False):
-    if m.db.engine.dialect.name != "postgresql":
-        raise SystemExit(
-            "Target database is not PostgreSQL. Set DATABASE_URL or REPTRACK_DATABASE_URI in backend/.env first."
-        )
     if not sqlite_path.is_file():
         raise SystemExit(f"SQLite source file not found: {sqlite_path}")
 
@@ -30,6 +26,10 @@ def migrate(sqlite_path: Path, force: bool = False):
     src.row_factory = sqlite3.Row
 
     with m.app.app_context():
+        if m.db.engine.dialect.name != "postgresql":
+            raise SystemExit(
+                "Target database is not PostgreSQL. Set DATABASE_URL or REPTRACK_DATABASE_URI in backend/.env first."
+            )
         m.db.create_all()
         has_data = m.User.query.first() or m.Exercise.query.first() or m.Group.query.first()
         if has_data and not force:
