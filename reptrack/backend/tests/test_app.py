@@ -316,6 +316,21 @@ class RepTrackMultiUserTests(unittest.TestCase):
             self.assertEqual(set_pw.status_code, 200)
             self.assertTrue(set_pw.get_json()["user"]["has_password"])
 
+    def test_postgres_database_uri_normalization(self):
+        self.assertEqual(
+            m.normalize_database_uri("postgres://user:pass@db.host:5432/reptrack?sslmode=require"),
+            "postgresql+psycopg://user:pass@db.host:5432/reptrack?sslmode=require",
+        )
+        self.assertEqual(
+            m.normalize_database_uri("postgresql://user:pass@db.host:5432/reptrack"),
+            "postgresql+psycopg://user:pass@db.host:5432/reptrack",
+        )
+        self.assertEqual(
+            m.normalize_database_uri("postgresql+psycopg://user:pass@db.host:5432/reptrack"),
+            "postgresql+psycopg://user:pass@db.host:5432/reptrack",
+        )
+        self.assertEqual(m.normalize_database_uri("sqlite:///reptrack.db"), "sqlite:///reptrack.db")
+
 
 if __name__ == "__main__":
     unittest.main()

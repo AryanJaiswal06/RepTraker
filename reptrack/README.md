@@ -17,9 +17,9 @@ python app.py                                        # http://127.0.0.1:5000
 ```
 
 ### Environment variables
+- `DATABASE_URL` (or `REPTRACK_DATABASE_URI`): Hosted PostgreSQL connection URL (e.g. `postgresql://user:pass@host:5432/reptrack?sslmode=require`); falls back to local `sqlite:///reptrack.db` if omitted. Both `postgres://` and `postgresql://` URLs are automatically normalized to `postgresql+psycopg://`.
 - `PORT`: server port (default `5000`)
 - `REPTRACK_HOST`: bind host (default `127.0.0.1`; set `0.0.0.0` to expose on your LAN)
-- `REPTRACK_DATABASE_URI`: SQLAlchemy database URL (default `sqlite:///reptrack.db`)
 - `REPTRACK_SECRET_KEY`: Flask session signing secret (auto-generated and persisted in `backend/instance/.secret_key` if omitted)
 - `REPTRACK_COOKIE_SECURE`: set `1` when serving over HTTPS
 - `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM`, `SMTP_TLS`, `SMTP_SSL`: SMTP credentials for sending 6-digit email verification OTP codes when creating a new account (when `SMTP_HOST` is omitted on `127.0.0.1`, local test OTPs are logged and shown on the sign-up screen)
@@ -64,5 +64,16 @@ cd frontend && npm run build
 - **History**: capped at 15 sessions per exercise; oldest sessions are trimmed per exercise (`trim_history` in `backend/app.py`).
 - **Weights**: stored in kg; the kg/lb toggle converts display and entry while preserving decimal precision.
 
-## Moving to PostgreSQL
-Set `REPTRACK_DATABASE_URI=postgresql+psycopg2://user:pass@host/reptrack` and `pip install psycopg2-binary`.
+## Hosted PostgreSQL Setup & Migration
+
+1. Create a hosted PostgreSQL database (Neon, Supabase, Render, Railway, etc.) and copy its connection string.
+2. Create `backend/.env` (see `backend/.env.example`) and set `DATABASE_URL`:
+   ```bash
+   DATABASE_URL=postgresql://USER:PASSWORD@HOST:5432/DBNAME?sslmode=require
+   ```
+3. *(Optional)* Migrate existing local SQLite data (`backend/instance/reptrack.db`) into your hosted PostgreSQL database:
+   ```bash
+   cd backend
+   python migrate_to_postgres.py
+   ```
+4. Start the server (`python app.py`) — tables are created automatically on startup and connections use `pool_pre_ping` + `pool_recycle` for hosted/serverless resilience.

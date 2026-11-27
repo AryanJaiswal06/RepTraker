@@ -5,3 +5,4 @@ instance
 .venv
 source
 *.db
+.env

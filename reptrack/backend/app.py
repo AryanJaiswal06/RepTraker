@@ -16,6 +16,7 @@ from email.message import EmailMessage
 from functools import wraps
 from pathlib import Path
 
+from dotenv import load_dotenv
 from flask import Flask, abort, g, jsonify, redirect, request, send_from_directory, session
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import ForeignKey, String, Text, event, func, text
@@ -25,11 +26,31 @@ from werkzeug.exceptions import HTTPException
 from werkzeug.security import check_password_hash, generate_password_hash
 
 BASE_DIR = Path(__file__).resolve().parent
+load_dotenv(BASE_DIR / ".env", override=False)
 DIST_DIR = Path(os.environ.get("REPTRACK_STATIC_DIR") or (BASE_DIR.parent / "frontend" / "dist"))
 
+
+def normalize_database_uri(raw: str) -> str:
+    """Normalize hosted PostgreSQL URLs (postgres:// / postgresql://) to use psycopg v3."""
+    uri = raw.strip()
+    if uri.startswith("postgres://"):
+        return "postgresql+psycopg://" + uri[len("postgres://") :]
+    if uri.startswith("postgresql://"):
+        return "postgresql+psycopg://" + uri[len("postgresql://") :]
+    return uri
+
+
+db_uri = normalize_database_uri(
+    os.environ.get("REPTRACK_DATABASE_URI") or os.environ.get("DATABASE_URL") or "sqlite:///reptrack.db"
+)
+
 app = Flask(__name__, static_folder=None)
-# Swap for a PostgreSQL URL (postgresql+psycopg2://...) to upgrade later.
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("REPTRACK_DATABASE_URI", "sqlite:///reptrack.db")
+app.config["SQLALCHEMY_DATABASE_URI"] = db_uri
+if not db_uri.startswith("sqlite:"):
+    app.config["SQLALCHEMY_ENGINE_OPTIONS"] = {
+        "pool_pre_ping": True,
+        "pool_recycle": 300,
+    }
 app.config["MAX_CONTENT_LENGTH"] = 5 * 1024 * 1024  # 5 MB payload cap
 app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=30)
 app.config["SESSION_COOKIE_HTTPONLY"] = True
